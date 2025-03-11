@@ -2,9 +2,59 @@ import React, { useContext } from "react";
 import { assets, plans } from "../assets/assets";
 import { AppContext } from "../context/AppContext";
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import axios from "axios";
 
 const BuyCredit = () => {
-  const { user, setShowLogin } = useContext(AppContext);
+  const { user, backendurl, loadCreditsData, token, setShowLogin } = useContext(AppContext);
+  const navigate = useNavigate()
+
+  const initPay = async(order) =>{
+    const options = {
+      key : import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount : order.amount,
+      currency : order.currency,
+      name : 'Credits Payments',
+      description : 'Credits Payments',
+      order_id: order.id,
+      receipt : order.receipt,
+      handler : async (response) =>{
+        try {
+          const {data} = await axios.post(backendurl + '/api/user/verify-razor', response, {headers :{token} } )
+          if (data.succes) {
+            loadCreditsData();
+            navigate('/')
+            toast.success('Credit Added')
+
+          }
+        } catch (error) {
+          toast.error(error.message)
+        }
+      }
+    }
+
+    const rzp = new window.Razorpay(options)
+    rzp.open()
+
+  }
+
+  const paymentRazorpay = async (planId)=>{
+    try {
+      if(!user){
+        setShowLogin(true)
+      }
+
+      const {date}  = await axios.post(backendurl +  '/api/user/pay-razor', {planId}, {headers : {token}})
+
+      if (data.succes) {
+        initPay(data.order)
+      }
+
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
 
   const handleOnClick = ()=>{
     if (!user) {
@@ -40,7 +90,7 @@ const BuyCredit = () => {
               {item.credits} credits
             </p>
             <button
-              onClick={handleOnClick}
+              onClick={()=>paymentRazorpay(item.id)}
               className="w-full bg-gray-800 text-white mt-8 text-sm rounded-md py-2.5 min-w-52"
             >
               {user ? "Purchase" : "Get Started"}
